@@ -53,14 +53,46 @@ void autocorrDFT(const cv::Mat &img, cv::Mat &dst)
 	cv::dft(fImg, dst);
 	cv::mulSpectrums(dst, dst, dst, cv::DFT_INVERSE, true);
 	cv::dft(dst, dst, cv::DFT_INVERSE | cv::DFT_SCALE);
+}
+
+void getMinimalPattern(const cv::Mat &input, unsigned int &sizeX, unsigned int &sizeY, const int minimalPatternSize = 10)
+{
+	const float epsilon = 0.00005;
+
+	//make input gray scale 
+	cv::Mat img;	
+	cv::cvtColor(input, img, CV_RGB2GRAY);
+
+	//calculate auto correlation
+	cv::Mat ac;
+	autocorrDFT(img, ac);
+	cv::Mat_<float>& ptrAc = (cv::Mat_<float>&)ac;
+
+	//search minimal pattern
+	sizeX = 0;
+	sizeY = 0;
+	for (int x = minimalPatternSize; x < ac.size().width  - minimalPatternSize; x++)
+	{
+		if (ptrAc(0, x)/ptrAc(0,0) > ptrAc(0, sizeX)/ptrAc(0,0) + epsilon || sizeX == 0)
+		{
+			sizeX = x;	
+		}
+	}
+	for (int y = minimalPatternSize; y < ac.size().height - minimalPatternSize; y++)
+	{
+		if (ptrAc(y, 0)/ptrAc(0,0) > ptrAc(sizeY, 0)/ptrAc(0,0) + epsilon || sizeY == 0)
+		{
+			sizeY = y;	
+		}
+	}
 } 
 
 int main (int argc, char** argv)
 {
 
-	cv::Mat src = cv::imread(argv[1], 0); // 0 == grayscale
+	cv::Mat src = cv::imread(argv[1]);
 
-	for (int i = 0; i < src.size().width; i++)
+/*	for (int i = 0; i < src.size().width; i++)
 	{
 		for (int j = 0; j < src.size().height; j++)
 		{
@@ -71,22 +103,36 @@ int main (int argc, char** argv)
 			}
 		}
 	}
-	cout<<"====================================================="<<endl;
-	cv::Mat dst;
-	autocorrDFT(src, dst);
-	cv::Mat_<float>& ptrDst = (cv::Mat_<float>&)dst;
-	//cv::Mat_<uchar>& ptrDst = (cv::Mat_<uchar>&)dst;
-	for (int i = 0; i < dst.size().width; i++)
+	cout<<"====================================================="<<endl; 
+*/
+
+	unsigned int sizeX, sizeY;
+	getMinimalPattern(src, sizeX, sizeY, atoi(argv[2]));	
+	cv::Mat pattern = cv::Mat(src, cv::Rect(0, 0, sizeX, sizeY));
+	cv::Mat repeatedPattern = cv::Mat(pattern.size().height * 3, pattern.size().width * 3, pattern.type());
+
+	for (int y = 0; y < 3; y++)
 	{
-		for (int j = 0; j < dst.size().height; j++)
+		for (int x = 0; x < 3; x++)
 		{
-			double ac = ptrDst(j, i) / ptrDst(0,0);
-			if (ac > atof(argv[2]))
-			{
-				cout<<i<<" "<<j<<" "<<ac <<endl;
-			}
+			cv::Mat roi(repeatedPattern, cv::Rect(x * pattern.size().width, y * pattern.size().height, pattern.size().width, pattern.size().height));
+			pattern.copyTo(roi);
 		}
+	
 	}
+
+	cv::startWindowThread();
+
+	cv::namedWindow("Pattern", CV_WINDOW_AUTOSIZE);
+	cv::imshow("Pattern", pattern);
+	cv::waitKey();
+	cv::namedWindow("RepeatedPattern", CV_WINDOW_AUTOSIZE);
+	cv::imshow("RepeatedPattern", repeatedPattern);
+	cv::waitKey();
+
+	cv::destroyAllWindows();
+
+
 
 	return 0;
 }
