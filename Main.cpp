@@ -161,19 +161,7 @@ int main (int argc, char** argv)
 		cv::Mat pattern = cv::Mat(src, cv::Rect(0, 0, sizeX, sizeY));
 
 		//repeat the pattern to visualize the result
-		cv::Mat repeatedPattern = cv::Mat(pattern.size().height * 3, pattern.size().width * 3, pattern.type());
-		for (int y = 0; y < 3; y++)
-		{
-			for (int x = 0; x < 3; x++)
-			{
-				cv::Mat roi(repeatedPattern, cv::Rect(	x * pattern.size().width, 
-									y * pattern.size().height,
-									pattern.size().width,
-									pattern.size().height));
-				pattern.copyTo(roi);
-			}
-		
-		}
+		cv::Mat repeatedPattern = cv::repeat(pattern, 3, 3);
 
 		cv::startWindowThread();
 		
