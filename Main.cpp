@@ -5,6 +5,16 @@
 #include <opencv/highgui.h>
 #include <iostream>
 
+/**
+ * \file	Main.cpp
+ * \brief 	This is an implementation of the auto correlation 
+ * 		function for images. The main goal is to verify how
+ *		good this method is when trying to find patterns in
+ *		textures.
+ *
+ * \author	Kim Oliver Rinnewitz, krinnewitz@uos.de
+ */
+
 using namespace std;
 
 
@@ -134,35 +144,52 @@ double getMinimalPattern(const cv::Mat &input, unsigned int &sizeX, unsigned int
 int main (int argc, char** argv)
 {
 
-	cv::Mat src = cv::imread(argv[1]);
-
-	unsigned int sizeX, sizeY;
-	cout<<"confidence: "<<getMinimalPattern(src, sizeX, sizeY, atoi(argv[2]))<<endl;
-	cv::Mat pattern = cv::Mat(src, cv::Rect(0, 0, sizeX, sizeY));
-	cv::Mat repeatedPattern = cv::Mat(pattern.size().height * 3, pattern.size().width * 3, pattern.type());
-
-	for (int y = 0; y < 3; y++)
+	if (argc != 3)
 	{
-		for (int x = 0; x < 3; x++)
+		cout<<"Usage: "<<argv[0]<<" <filename> <minimal pattern size>"<<endl;
+		return EXIT_FAILURE;	
+	}
+	else
+	{
+		cv::Mat src = cv::imread(argv[1]);
+
+		//try to find a pattern in the image and get the pattern size
+		unsigned int sizeX, sizeY;
+		cout<<"confidence: "<<getMinimalPattern(src, sizeX, sizeY, atoi(argv[2]))<<endl;
+
+		//save the pattern
+		cv::Mat pattern = cv::Mat(src, cv::Rect(0, 0, sizeX, sizeY));
+
+		//repeat the pattern to visualize the result
+		cv::Mat repeatedPattern = cv::Mat(pattern.size().height * 3, pattern.size().width * 3, pattern.type());
+		for (int y = 0; y < 3; y++)
 		{
-			cv::Mat roi(repeatedPattern, cv::Rect(x * pattern.size().width, y * pattern.size().height, pattern.size().width, pattern.size().height));
-			pattern.copyTo(roi);
+			for (int x = 0; x < 3; x++)
+			{
+				cv::Mat roi(repeatedPattern, cv::Rect(	x * pattern.size().width, 
+									y * pattern.size().height,
+									pattern.size().width,
+									pattern.size().height));
+				pattern.copyTo(roi);
+			}
+		
 		}
-	
+
+		cv::startWindowThread();
+		
+		//show the single pattern
+		cv::namedWindow("Pattern", CV_WINDOW_AUTOSIZE);
+		cv::imshow("Pattern", pattern);
+		cv::waitKey();
+		
+		//show the stitched pattern
+		cv::namedWindow("RepeatedPattern", CV_WINDOW_AUTOSIZE);
+		cv::imshow("RepeatedPattern", repeatedPattern);
+		cv::waitKey();
+
+		cv::destroyAllWindows();
+
+		return EXIT_SUCCESS;
 	}
 
-	cv::startWindowThread();
-
-	cv::namedWindow("Pattern", CV_WINDOW_AUTOSIZE);
-	cv::imshow("Pattern", pattern);
-	cv::waitKey();
-	cv::namedWindow("RepeatedPattern", CV_WINDOW_AUTOSIZE);
-	cv::imshow("RepeatedPattern", repeatedPattern);
-	cv::waitKey();
-
-	cv::destroyAllWindows();
-
-
-
-	return 0;
 }
