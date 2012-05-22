@@ -1,0 +1,19 @@
+1. Description
+==============
+This is an implementation of the auto correlation function for images.
+
+It uses OpenCV and there may be implementations with a better performance.
+The main purpose is to evaluate how successful this method can be used to 
+find patterns in textures.
+
+2. Requirements
+===============
+You need to have a recent version of OpenCV installed. 
+
+3. Compiling
+============
+You can compile the program by entering the following commands on the command line:
+
+    mkdir build && cd build
+    cmake ..
+    make
