@@ -70,6 +70,9 @@ void autocorrDFT(const cv::Mat &img, cv::Mat &dst)
 	//Convert image from unsigned char to float matrix
 	cv::Mat fImg;
 	img.convertTo(fImg, CV_32FC1);
+	//Subtract the mean
+	cv::Mat mean(fImg.size(), fImg.type(), cv::mean(fImg));
+	cv::subtract(fImg, mean, fImg);
 	
 	//Calculate the optimal size for the dft output.
 	//This increases speed.
@@ -86,6 +89,12 @@ void autocorrDFT(const cv::Mat &img, cv::Mat &dst)
 	cv::mulSpectrums(dst, dst, dst, cv::DFT_INVERSE, true);
 	//transform the result back to the image domain 
 	cv::dft(dst, dst, cv::DFT_INVERSE | cv::DFT_SCALE);
+
+	//norm the result
+	cv::multiply(fImg,fImg,fImg);
+	float denom = cv::sum(fImg)[0];
+	dst = dst * (1/denom);
+
 }
 
 
@@ -124,7 +133,7 @@ double getMinimalPattern(const cv::Mat &input, unsigned int &sizeX, unsigned int
 	//x direction
 	for (int x = minimalPatternSize; x < ac.size().width / 2; x++)	//TODO: it is not a good idea to stop at width/2
 	{
-		if (ptrAc(0, x)/ptrAc(0,0) > ptrAc(0, sizeX)/ptrAc(0,0) + epsilon || sizeX == 0)
+		if (ptrAc(0, x) > ptrAc(0, sizeX) + epsilon || sizeX == 0)
 		{
 			sizeX = x;	
 		}
@@ -132,13 +141,13 @@ double getMinimalPattern(const cv::Mat &input, unsigned int &sizeX, unsigned int
 	//y direction
 	for (int y = minimalPatternSize; y < ac.size().height / 2; y++)	//TODO: it is not a good idea to stop at height/2
 	{
-		if (ptrAc(y, 0)/ptrAc(0,0) > ptrAc(sizeY, 0)/ptrAc(0,0) + epsilon || sizeY == 0)
+		if (ptrAc(y, 0) > ptrAc(sizeY, 0) + epsilon || sizeY == 0)
 		{
 			sizeY = y;	
 		}
 	}
 	
-	return (ptrAc(0, sizeX) / ptrAc(0,0) + ptrAc(sizeY, 0) / ptrAc(0,0)) / 2.0;
+	return (ptrAc(0, sizeX) + ptrAc(sizeY, 0)) / 2.0;
 } 
 
 int main (int argc, char** argv)
@@ -162,6 +171,8 @@ int main (int argc, char** argv)
 
 		//repeat the pattern to visualize the result
 		cv::Mat repeatedPattern = cv::repeat(pattern, 3, 3);
+
+		cv::imwrite("p1.jpg", pattern);
 
 		cv::startWindowThread();
 		
