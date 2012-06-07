@@ -131,7 +131,7 @@ double getMinimalPattern(const cv::Mat &input, unsigned int &sizeX, unsigned int
 	sizeX = 0;
 	sizeY = 0;
 	//x direction
-	for (int x = minimalPatternSize; x < ac.size().width / 2; x++)	//TODO: it is not a good idea to stop at width/2
+	for (int x = minimalPatternSize; x < ac.size().width / 2; x++)
 	{
 		if (ptrAc(0, x) > ptrAc(0, sizeX) + epsilon || sizeX == 0)
 		{
@@ -139,7 +139,7 @@ double getMinimalPattern(const cv::Mat &input, unsigned int &sizeX, unsigned int
 		}
 	}
 	//y direction
-	for (int y = minimalPatternSize; y < ac.size().height / 2; y++)	//TODO: it is not a good idea to stop at height/2
+	for (int y = minimalPatternSize; y < ac.size().height / 2; y++)
 	{
 		if (ptrAc(y, 0) > ptrAc(sizeY, 0) + epsilon || sizeY == 0)
 		{
