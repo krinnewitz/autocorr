@@ -57,8 +57,7 @@ double autocorr(int y, int x, cv::Mat &img)
  *		This implementation is quite fast and may be used for productive jobs. Auto
  *		correlation can be calculated by transforming the image img into the frequency
  *		domain (getting the fourier transformation IMG of img), calculating
- *		IMG * IMG* (where IMG* is the conjugated complex of IMG) and transforming the
- *		result back to the image domain. 
+ *		IMG * IMG  and transforming the result back to the image domain. 
  *
  * \param 	img	The image to calculate the auto correlation for. Must be one channel
  *			gray scale.
@@ -77,16 +76,16 @@ void autocorrDFT(const cv::Mat &img, cv::Mat &dst)
 	//Calculate the optimal size for the dft output.
 	//This increases speed.
 	cv::Size dftSize;
-	dftSize.width = cv::getOptimalDFTSize(img.cols);
-	dftSize.height = cv::getOptimalDFTSize(img.rows);
+	dftSize.width = cv::getOptimalDFTSize(2 * img.cols +1 );
+	dftSize.height = cv::getOptimalDFTSize(2 * img.rows +1);
 	
 	//prepare the destination for the dft
 	dst = cv::Mat(dftSize, CV_32FC1, cv::Scalar::all(0));
 	
 	//transform the image into the frequency domain
 	cv::dft(fImg, dst);
-	//calculate DST * DST* (don't mind the fourth parameter. It is ignored)
-	cv::mulSpectrums(dst, dst, dst, cv::DFT_INVERSE, true);
+	//calculate DST * DST (don't mind the fourth parameter. It is ignored)
+	cv::mulSpectrums(dst, dst, dst, cv::DFT_INVERSE, false);
 	//transform the result back to the image domain 
 	cv::dft(dst, dst, cv::DFT_INVERSE | cv::DFT_SCALE);
 
@@ -130,24 +129,42 @@ double getMinimalPattern(const cv::Mat &input, unsigned int &sizeX, unsigned int
 	//search minimal pattern i.e. search the highest correlation in x and y direction
 	sizeX = 0;
 	sizeY = 0;
-	//x direction
-	for (int x = minimalPatternSize; x < ac.size().width / 2; x++)
+
+	for(int y = 0; y < ac.rows; y++)
 	{
-		if (ptrAc(0, x) > ptrAc(0, sizeX) + epsilon || sizeX == 0)
+		for(int x = 0; x < ac.cols; x++)
 		{
-			sizeX = x;	
+			cerr<<y * ac.cols + x<<" "<<ptrAc(y, x)<<endl;
 		}
+
 	}
+	
+
 	//y direction
 	for (int y = minimalPatternSize; y < ac.size().height / 2; y++)
 	{
-		if (ptrAc(y, 0) > ptrAc(sizeY, 0) + epsilon || sizeY == 0)
+		for(int x = 1; x < ac.cols / 2; x++)
 		{
-			sizeY = y;	
+			if (ptrAc(y, x) > ptrAc(sizeY, sizeX) + epsilon || sizeY == 0)
+			{
+				sizeY = y;	
+				sizeX = x;
+			}
 		}
 	}
+/*
+	sizeX = 0;
 	
-	return (ptrAc(0, sizeX) + ptrAc(sizeY, 0)) / 2.0;
+	//x direction
+	for (int x = minimalPatternSize; x < ac.size().width / 2; x++)
+	{
+		if (ptrAc(sizeY, x) > ptrAc(sizeY, sizeX) + epsilon || sizeX == 0)
+		{
+			sizeX = x;	
+		}
+	}*/
+	
+	return ptrAc(sizeY, sizeX);
 } 
 
 int main (int argc, char** argv)
