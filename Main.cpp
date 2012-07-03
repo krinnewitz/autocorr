@@ -51,6 +51,47 @@ double autocorr(int y, int x, cv::Mat &img)
 	return a/b;
 }
 
+/**
+ * \brief 	
+ *
+ * \param 	img	The image to calculate the auto covariance for. Must be one channel
+ *			gray scale.
+ * \param	dst	The destination to store the correlation values in. The result is normed.
+ */
+void autocov(const cv::Mat &img, cv::Mat &dst)
+{
+	//Convert image from unsigned char to float matrix
+	cv::Mat fImg;
+	img.convertTo(fImg, CV_32FC1);
+	//Subtract the mean
+	cv::Mat mean(fImg.size(), fImg.type(), cv::mean(fImg));
+	cv::subtract(fImg, mean, fImg);
+
+	dst = cv::Mat(fImg.size(), CV_32FC1, cv::Scalar::all(0));
+
+	for (int x = - img.cols/2; x < img.cols/2; x++)
+	{
+		for (int y = -img.rows/2; y < img.rows/2; y++)
+		{
+			int from_i = x < 0 ? 0 - x : 0;
+			int from_j = y < 0 ? 0 - y : 0;
+			int to_i   = x < 0 ? img.cols : img.cols - x;
+			int to_j   = y < 0 ? img.rows : img.rows - y;
+			for (int i = from_i; i < to_i; i++)
+			{	
+				for (int j = from_j; j < to_j; j++)
+				{	
+					dst.at<float>(y+img.rows/2,x+img.cols/2) += fImg.at<float>(j, i) * fImg.at<float>(j+y, i+x);
+					dst.at<float>(y+img.rows/2,x+img.cols/2) /= 1.0 * (fImg.cols - abs(x)) * (fImg.rows - abs(y));
+				}
+			}
+		}
+	}	
+	//norm the result
+	cv::multiply(fImg,fImg,fImg);
+	float denom = cv::sum(fImg)[0];
+	dst = dst * (1/(denom * 1.0/(img.rows*img.cols)));
+}
 
 /**
  * \brief 	Implementation of the auto correlation function using fourier transformation.
@@ -61,8 +102,7 @@ double autocorr(int y, int x, cv::Mat &img)
  *
  * \param 	img	The image to calculate the auto correlation for. Must be one channel
  *			gray scale.
- * \param	dst	The destination to store the correlation values in. The result is NOT
-			normed.
+ * \param	dst	The destination to store the correlation values in. The result is normed.
  */
 void autocorrDFT(const cv::Mat &img, cv::Mat &dst)
 {
@@ -85,7 +125,7 @@ void autocorrDFT(const cv::Mat &img, cv::Mat &dst)
 	//transform the image into the frequency domain
 	cv::dft(fImg, dst);
 	//calculate DST * DST (don't mind the fourth parameter. It is ignored)
-	cv::mulSpectrums(dst, dst, dst, cv::DFT_INVERSE, false);
+	cv::mulSpectrums(dst, dst, dst, cv::DFT_INVERSE, true);
 	//transform the result back to the image domain 
 	cv::dft(dst, dst, cv::DFT_INVERSE | cv::DFT_SCALE);
 
@@ -96,6 +136,51 @@ void autocorrDFT(const cv::Mat &img, cv::Mat &dst)
 
 }
 
+/**
+ * \brief	Calculates the sum of all rows for each column of
+ *		the given autocorrelation matrix. It will return
+ *		a float array of length ac.cols.
+ *
+ * \param	ac	The auto correlation matrix
+ * \param	output	The destination where results are stored
+ */
+void getACX(const cv::Mat &ac, float* output)
+{
+	//Allocate output
+	output = new float[ac.cols];
+	for(int x = 0; x < ac.cols; x++)
+	{
+		float rho_x = 0;
+		for(int y = 0; y < ac.rows; y++)
+		{
+			rho_x += ac.at<float>(y,x);
+		}
+		output[x] = rho_x;
+	}
+}
+
+/**
+ * \brief	Calculates the sum of all columns for each row of
+ *		the given autocorrelation matrix. It will return
+ *		a float array of length ac.rows.
+ *
+ * \param	ac	The auto correlation matrix
+ * \param	output	The destination where results are stored
+ */
+void getACY(const cv::Mat &ac, float* output)
+{
+	//Allocate output
+	output = new float[ac.rows];
+	for(int y = 0; y < ac.rows; y++)
+	{
+		float rho_y = 0;
+		for(int x = 0; x < ac.cols; x++)
+		{
+			rho_y += ac.at<float>(y,x);
+		}
+		output[y] = rho_y;
+	}
+}
 
 /**
  * \brief	Tries to find a pattern in an Image using the auto correlation
@@ -130,16 +215,6 @@ double getMinimalPattern(const cv::Mat &input, unsigned int &sizeX, unsigned int
 	sizeX = 0;
 	sizeY = 0;
 
-	for(int y = 0; y < ac.rows; y++)
-	{
-		for(int x = 0; x < ac.cols; x++)
-		{
-			cerr<<y * ac.cols + x<<" "<<ptrAc(y, x)<<endl;
-		}
-
-	}
-	
-
 	//y direction
 	for (int y = minimalPatternSize; y < ac.size().height / 2; y++)
 	{
@@ -152,7 +227,7 @@ double getMinimalPattern(const cv::Mat &input, unsigned int &sizeX, unsigned int
 			}
 		}
 	}
-/*
+
 	sizeX = 0;
 	
 	//x direction
@@ -162,7 +237,7 @@ double getMinimalPattern(const cv::Mat &input, unsigned int &sizeX, unsigned int
 		{
 			sizeX = x;	
 		}
-	}*/
+	}
 	
 	return ptrAc(sizeY, sizeX);
 } 
