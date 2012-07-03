@@ -224,6 +224,7 @@ float calcStdDev(const int* data, int len)
  */
 int countPeaks(const float* data, float &stdDev, int len)
 {
+	const float epsilon = 0.0001;
 	int result = 0;
 
 	if (len < 2)
@@ -233,28 +234,43 @@ int countPeaks(const float* data, float &stdDev, int len)
 
 	int lastPeak = -1;
 
+	bool curr_up = true;
+
 	//Count boarders, too
 	if (data[0] > data[1])
 	{
 		result++;
 		lastPeak = 0;
+		curr_up = false;
 	}
 
 	int* distances = new int[len];
 
-	//search for local maxima
+	//Search for peaks
 	for (int i = 1; i < len - 1; i++)
 	{
-		if (data[i] >= data[i-1] && data[i] > data[i+1])
+		bool next_up = curr_up;
+//		if (data[i] > data[i-1])  
+		if (data[i] - data[i-1] > epsilon)
 		{
+			next_up = true;
+		}
+//		if (data[i] < data[i-1])  
+		if (data[i] - data[i-1] < -epsilon)  
+		{
+			next_up = false;
+		}
+		if (next_up == false && curr_up == true)
+		{
+			//peak detected
 			if (lastPeak != -1)
 			{
 				distances[result-1] = lastPeak - i;
 			}
-			
 			result++;
 			lastPeak = i;
 		}
+		curr_up = next_up;
 	}
 
 	if (data[len-1] > data[len-2])
@@ -310,8 +326,8 @@ double getMinimalPattern(const cv::Mat &input, unsigned int &sizeX, unsigned int
 	float stdDevY = 0;
 	int peaksX = countPeaks(rho_x, stdDevX, ac.cols);
 	int peaksY = countPeaks(rho_y, stdDevY, ac.rows);
-	cout<<"StdDev rho_x: "<<stdDevX/(ac.cols / peaksX)<<endl;
-	cout<<"StdDev rho_y: "<<stdDevY/(ac.rows / peaksY)<<endl;
+	cout<<"Peaks x:"<<peaksX<<"\t\t StdDev rho_x: "<<stdDevX/(ac.cols / peaksX)<<endl;
+	cout<<"Peaks y:"<<peaksY<<"\t\t StdDev rho_y: "<<stdDevY/(ac.rows / peaksY)<<endl;
 //==========================
 
 	//search minimal pattern i.e. search the highest correlation in x and y direction
