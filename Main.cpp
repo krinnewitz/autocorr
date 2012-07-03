@@ -144,7 +144,7 @@ void autocorrDFT(const cv::Mat &img, cv::Mat &dst)
  * \param	ac	The auto correlation matrix
  * \param	output	The destination where results are stored
  */
-void getACX(const cv::Mat &ac, float* output)
+void getACX(const cv::Mat &ac, float* &output)
 {
 	//Allocate output
 	output = new float[ac.cols];
@@ -167,7 +167,7 @@ void getACX(const cv::Mat &ac, float* output)
  * \param	ac	The auto correlation matrix
  * \param	output	The destination where results are stored
  */
-void getACY(const cv::Mat &ac, float* output)
+void getACY(const cv::Mat &ac, float* &output)
 {
 	//Allocate output
 	output = new float[ac.rows];
@@ -181,6 +181,96 @@ void getACY(const cv::Mat &ac, float* output)
 		output[y] = rho_y;
 	}
 }
+
+/**
+ * \brief 	Calculates the standard deviation of the given 
+ *		data array
+ *
+ * \param	data	The data array
+ * \param	len 	The length of the data array
+ *
+ * \return 	The standard deviation of the given data array
+ */
+float calcStdDev(const int* data, int len)
+{
+	float result = 0;
+	float mean = 0;
+	for (int i = 0; i < len; i++)
+	{
+		mean += data[i];
+	}	
+	mean /= len;
+
+	for (int i = 0; i < len; i++)
+	{
+		result += (data[i] - mean) * (data[i] - mean);
+	}
+	result /= len;
+	result = sqrt(result);
+
+	return result;
+}
+
+/**
+ * \brief 	Counts the number of peaks in the given data Array and
+ * 		returns the standard deviation of the distances between
+ *		the peaks
+ * \param	data		The data array
+ * \param	stdDev		The standard deviation of the distances
+ *				between the peaks
+ * \param	len		The length of the array
+ *
+ * \return	The number of peaks in the data array
+ */
+int countPeaks(const float* data, float &stdDev, int len)
+{
+	int result = 0;
+
+	if (len < 2)
+	{
+		return 0;
+	}
+
+	int lastPeak = -1;
+
+	//Count boarders, too
+	if (data[0] > data[1])
+	{
+		result++;
+		lastPeak = 0;
+	}
+
+	int* distances = new int[len];
+
+	//search for local maxima
+	for (int i = 1; i < len - 1; i++)
+	{
+		if (data[i] >= data[i-1] && data[i] > data[i+1])
+		{
+			if (lastPeak != -1)
+			{
+				distances[result-1] = lastPeak - i;
+			}
+			
+			result++;
+			lastPeak = i;
+		}
+	}
+
+	if (data[len-1] > data[len-2])
+	{
+		if (lastPeak != -1)
+		{
+			distances[result-1] = lastPeak - (len - 1);
+		}
+		result++;
+	}
+
+	stdDev = calcStdDev(distances, result - 1);
+
+	return result;
+}
+
 
 /**
  * \brief	Tries to find a pattern in an Image using the auto correlation
@@ -211,12 +301,25 @@ double getMinimalPattern(const cv::Mat &input, unsigned int &sizeX, unsigned int
 	autocorrDFT(img, ac);
 	cv::Mat_<float>& ptrAc = (cv::Mat_<float>&)ac;
 
+//===========================
+	float *rho_x = 0;
+	float *rho_y = 0;	
+	getACX(ac, rho_x);
+	getACY(ac, rho_y);
+	float stdDevX = 0;
+	float stdDevY = 0;
+	int peaksX = countPeaks(rho_x, stdDevX, ac.cols);
+	int peaksY = countPeaks(rho_y, stdDevY, ac.rows);
+	cout<<"StdDev rho_x: "<<stdDevX/(ac.cols / peaksX)<<endl;
+	cout<<"StdDev rho_y: "<<stdDevY/(ac.rows / peaksY)<<endl;
+//==========================
+
 	//search minimal pattern i.e. search the highest correlation in x and y direction
 	sizeX = 0;
 	sizeY = 0;
 
 	//y direction
-	for (int y = minimalPatternSize; y < ac.size().height / 2; y++)
+/*	for (int y = minimalPatternSize; y < ac.size().height / 2; y++)
 	{
 		for(int x = 1; x < ac.cols / 2; x++)
 		{
@@ -238,7 +341,8 @@ double getMinimalPattern(const cv::Mat &input, unsigned int &sizeX, unsigned int
 			sizeX = x;	
 		}
 	}
-	
+*/	
+	sizeX = 1; sizeY = 1; //TODO: remove
 	return ptrAc(sizeY, sizeX);
 } 
 
