@@ -33,6 +33,7 @@
 #include <opencv/cv.h>
 #include <cstdio>
 #include "Texture.hpp"
+#include "../crosscorr/CrossCorr.hpp"
 
 namespace lssr {
 
@@ -66,6 +67,8 @@ public:
 	 *		origin (0,0) of the input image with the width of sizeX and the
 	 * 		height of sizeY.
 	 *
+	 * \param	sX			The starting x position of the found pattern
+	 * \param	sY			The starting y position of the found pattern
 	 * \param	sizeX			The resulting x size of the found pattern
 	 * \param	sizeY			The resulting y size of the found pattern
 	 * \param	minimalPatternSize	The minimum acceptable x and y size of a
@@ -74,7 +77,7 @@ public:
 	 * \return	A confidence between 0 and 1 indicating the degree of success in
 	 *		extracting a pattern from the given image
 	 */
-	double getMinimalPattern(unsigned int &sizeX, unsigned int &sizeY, const int minimalPatternSize);
+	double getMinimalPattern(unsigned int &sX, unsigned int &sY, unsigned int &sizeX, unsigned int &sizeY, const int minimalPatternSize);
 
 	/**
 	 * Destructor.
@@ -134,12 +137,14 @@ private:
 	 * \param	stdDev		The standard deviation of the distances
 	 *				between the peaks
 	 * \param	len		The length of the array
+	 * \param	peaks		Array to hold the positions of all peaks
 	 *
 	 * \return	The number of peaks in the data array
 	 */
-	int countPeaks(const float* data, float &stdDev, int len);
+	int countPeaks(const float* data, float &stdDev, int len, int peaks[]);
 
 	cv::Mat m_autocorr;
+	cv::Mat m_image;
 };
 
 }

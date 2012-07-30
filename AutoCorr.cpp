@@ -36,11 +36,14 @@ AutoCorr::AutoCorr(Texture *t)
 	cv::Mat img;	
 	cv::cvtColor(img1, img, CV_RGB2GRAY);
 
+	m_image = img1;
 	autocorrDFT(img, m_autocorr);
+	
 }
 
 AutoCorr::AutoCorr(const cv::Mat &t)
 {
+	m_image = t;
 	autocorrDFT(t, m_autocorr);
 }
 
@@ -126,7 +129,7 @@ float AutoCorr::calcStdDev(const int* data, int len)
 	return result;
 }
 
-int AutoCorr::countPeaks(const float* data, float &stdDev, int len)
+int AutoCorr::countPeaks(const float* data, float &stdDev, int len, int peaks[])
 {
 	const float epsilon = 0.0001;
 	int result = 0;
@@ -140,9 +143,10 @@ int AutoCorr::countPeaks(const float* data, float &stdDev, int len)
 
 	bool curr_up = true;
 
-	//Count boarders, too
+	//Count borders, too
 	if (data[0] > data[1])
 	{
+		peaks[result] = 0;
 		result++;
 		lastPeak = 0;
 		curr_up = false;
@@ -171,6 +175,7 @@ int AutoCorr::countPeaks(const float* data, float &stdDev, int len)
 			{
 				distances[result-1] = lastPeak - i;
 			}
+			peaks[result] = i;
 			result++;
 			lastPeak = i;
 		}
@@ -183,6 +188,7 @@ int AutoCorr::countPeaks(const float* data, float &stdDev, int len)
 		{
 			distances[result-1] = lastPeak - (len - 1);
 		}
+		peaks[result] = len - 1;
 		result++;
 	}
 
@@ -191,55 +197,80 @@ int AutoCorr::countPeaks(const float* data, float &stdDev, int len)
 	return result;
 }
 
-double AutoCorr::getMinimalPattern(unsigned int &sizeX, unsigned int &sizeY, const int minimalPatternSize = 10)
+double AutoCorr::getMinimalPattern(unsigned int &sX, unsigned int &sY, unsigned int &sizeX, unsigned int &sizeY, const int minimalPatternSize = 10)
 {
 	const float epsilon = 0.00005;
 
-	cv::Mat_<float>& ptrAc = (cv::Mat_<float>&)m_autocorr;
-
-//===========================
 	float *rho_x = 0;
 	float *rho_y = 0;	
 	getACX(m_autocorr, rho_x);
 	getACY(m_autocorr, rho_y);
 	float stdDevX = 0;
 	float stdDevY = 0;
-	int peaksX = countPeaks(rho_x, stdDevX, m_autocorr.cols);
-	int peaksY = countPeaks(rho_y, stdDevY, m_autocorr.rows);
-	std::cout<<"Peaks x:"<<peaksX<<"\t\t StdDev rho_x: "<<stdDevX/(m_autocorr.cols / peaksX)<<std::endl;
-	std::cout<<"Peaks y:"<<peaksY<<"\t\t StdDev rho_y: "<<stdDevY/(m_autocorr.rows / peaksY)<<std::endl;
-//==========================
+	int* xPeaks = new int[m_autocorr.cols];
+	int* yPeaks = new int[m_autocorr.rows];
+	int peaksX = countPeaks(rho_x, stdDevX, m_autocorr.cols, xPeaks);
+	int peaksY = countPeaks(rho_y, stdDevY, m_autocorr.rows, yPeaks);
+//	std::cout<<"Peaks x:"<<peaksX<<"\t\t StdDev rho_x: "<<stdDevX/(m_autocorr.cols / peaksX)<<std::endl;
+//	std::cout<<"Peaks y:"<<peaksY<<"\t\t StdDev rho_y: "<<stdDevY/(m_autocorr.rows / peaksY)<<std::endl;
+//	for (int i = 0; i < m_autocorr.cols; i++)
+//	{
+//		std::cerr<<i<<" "<<rho_x[i]<<std::endl;
+//	}
 
-	//search minimal pattern i.e. search the highest correlation in x and y direction
-	sizeX = 0;
-	sizeY = 0;
+	//x direction
+	float x_highest_correlation = -FLT_MAX;
+	for (int x = 0; x < peaksX / 2; x++)
+	{
+		//choose size for subrect
+		int width  = xPeaks[x + 1] - xPeaks[x];
+		int height = m_image.rows;
+
+		//choose center for the subrect
+		int cx = xPeaks[x] + width / 2;
+		int cy = height / 2;
+
+		//extract the subrect
+		cv::Mat dst;
+		cv::getRectSubPix(m_image, cv::Size(width, height), cv::Point2f(cx, cy), dst);
+	
+		//calculate cross correlation between dst and m_image
+		float correlation = 0/*TODO*/;	
+		if (correlation > x_highest_correlation)
+		{
+			x_highest_correlation = correlation;
+			sizeX 	= width;
+			sX	= xPeaks[x];
+		}
+	}
 
 	//y direction
-/*	for (int y = minimalPatternSize; y < ac.size().height / 2; y++)
+	float y_highest_correlation = -FLT_MAX;
+	for (int y = 0; y < peaksY / 2; y++)
 	{
-		for(int x = 1; x < ac.cols / 2; x++)
+		//choose size for subrect
+		int width = m_image.cols;
+		int height  = yPeaks[y + 1] - yPeaks[y];
+
+		//choose center for the subrect
+		int cx = width / 2;
+		int cy = yPeaks[y] + width / 2;
+
+		//extract the subrect
+		cv::Mat dst;
+		cv::getRectSubPix(m_image, cv::Size(width, height), cv::Point2f(cx, cy), dst);
+	
+		//calculate cross correlation between dst and m_image
+		float correlation = 0/*TODO*/;	
+		if (correlation > y_highest_correlation)
 		{
-			if (ptrAc(y, x) > ptrAc(sizeY, sizeX) + epsilon || sizeY == 0)
-			{
-				sizeY = y;	
-				sizeX = x;
-			}
+			y_highest_correlation = correlation;
+			sizeY 	= height;
+			sY	= yPeaks[y];
 		}
 	}
 
-	sizeX = 0;
-	
-	//x direction
-	for (int x = minimalPatternSize; x < ac.size().width / 2; x++)
-	{
-		if (ptrAc(sizeY, x) > ptrAc(sizeY, sizeX) + epsilon || sizeX == 0)
-		{
-			sizeX = x;	
-		}
-	}
-*/	
-	sizeX = 1; sizeY = 1; //TODO: remove
-	return ptrAc(sizeY, sizeX);
+	return 0; //TODO
 } 
 
 AutoCorr::~AutoCorr()

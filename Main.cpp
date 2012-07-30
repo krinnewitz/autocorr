@@ -102,15 +102,15 @@ int main (int argc, char** argv)
 	}
 	else
 	{
-		cv::Mat src = cv::imread(argv[1]);
+		cv::Mat src = cv::imread(argv[1], 0);
 
 		//try to find a pattern in the image and get the pattern size
 		lssr::AutoCorr* ac = new lssr::AutoCorr(src);
-		unsigned int sizeX, sizeY;
-		cout<<"confidence: "<<ac->getMinimalPattern(sizeX, sizeY, atoi(argv[2]))<<endl;
+		unsigned int sizeX, sizeY, sX, sY;
+		cout<<"confidence: "<<ac->getMinimalPattern(sX, sY, sizeX, sizeY, atoi(argv[2]))<<endl;
 
 		//save the pattern
-		cv::Mat pattern = cv::Mat(src, cv::Rect(0, 0, sizeX, sizeY));
+		cv::Mat pattern = cv::Mat(src, cv::Rect(sX, sY, sizeX, sizeY));
 
 		//repeat the pattern to visualize the result
 		cv::Mat repeatedPattern = cv::repeat(pattern, 3, 3);
