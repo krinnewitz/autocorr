@@ -108,7 +108,7 @@ int main (int argc, char** argv)
 		lssr::AutoCorr* ac = new lssr::AutoCorr(src);
 		unsigned int sizeX, sizeY, sX, sY;
 		cout<<"confidence: "<<ac->getMinimalPattern(sX, sY, sizeX, sizeY, atoi(argv[2]))<<endl;
-
+		cout<<sX<<" "<<sY<<" "<<sizeX<<" "<<sizeY<<endl;
 		//save the pattern
 		cv::Mat pattern = cv::Mat(src, cv::Rect(sX, sY, sizeX, sizeY));
 
