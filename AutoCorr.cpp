@@ -197,7 +197,29 @@ int AutoCorr::countPeaks(const float* data, float &stdDev, int len, int peaks[])
 	return result;
 }
 
-double AutoCorr::getMinimalPattern(unsigned int &sX, unsigned int &sY, unsigned int &sizeX, unsigned int &sizeY, const int minimalPatternSize = 10)
+float AutoCorr::calcPeakHeight(int peak, float* data, int len)
+{
+	float result = 0;
+
+	//find deeps before and after peak
+	int d1 = peak;
+	while(data[d1] >= data[d1 - 1] && d1 > 0)
+	{
+		d1--;
+	}
+	int d2 = peak;
+	while(data[d2] >= data[d2 + 1] && d2 < len - 1)
+	{
+		d2++;
+	}
+
+	//calculate height of peak
+	result = data[peak] - (data[d1] + data[d2]) / 2;
+
+	return result;	
+}
+
+double AutoCorr::getMinimalPatternCC(unsigned int &sX, unsigned int &sY, unsigned int &sizeX, unsigned int &sizeY, const int minimalPatternSize = 10)
 {
 	const float epsilon = 0.00005;
 
@@ -225,7 +247,7 @@ double AutoCorr::getMinimalPattern(unsigned int &sX, unsigned int &sY, unsigned 
 	std::vector<int> high_xPeaks;
 	for (int i = 0; i < peaksX; i++)
 	{
-		if (rho_x[xPeaks[i]] > minimalPatternSize)
+		if (calcPeakHeight(xPeaks[i], rho_x, m_autocorr.cols) > minimalPatternSize && rho_x[xPeaks[i]] > 0)
 		{
 			high_xPeaks.push_back(xPeaks[i]);
 			std::cout<<high_xPeaks.back()<<" "<<0<<std::endl;
@@ -234,7 +256,7 @@ double AutoCorr::getMinimalPattern(unsigned int &sX, unsigned int &sY, unsigned 
 	std::vector<int> high_yPeaks;
 	for (int i = 0; i < peaksY; i++)
 	{
-		if (rho_y[yPeaks[i]] > minimalPatternSize)
+		if (calcPeakHeight(yPeaks[i], rho_y, m_autocorr.rows) > minimalPatternSize && rho_y[yPeaks[i]] > 0)
 		{
 			high_yPeaks.push_back(yPeaks[i]);
 		}
@@ -274,12 +296,18 @@ double AutoCorr::getMinimalPattern(unsigned int &sX, unsigned int &sY, unsigned 
 			}
 		}
 	}
+	//Could not find enough peaks
+	if (x_highest_correlation == -FLT_MAX)
+	{
+ 		sizeX 	= m_image.cols;
+		sX	= 0;
+	}
 
 	//y direction
 	float y_highest_correlation = -FLT_MAX;
 	for (int y = 0; y < high_yPeaks.size() / 2; y++)
 	{
-		for (int y2 = y + 1; y2 < high_yPeaks.size(); y2++)
+		for (int y2 = y + 1; y2 < high_yPeaks.size() / 2; y2++)
 		{
 			//choose size for subrect
 			int width = m_image.cols;
@@ -307,6 +335,127 @@ double AutoCorr::getMinimalPattern(unsigned int &sX, unsigned int &sY, unsigned 
 				sY	= high_yPeaks[y];
 			}
 		}
+	}
+	//Could not find enough peaks
+	if (y_highest_correlation == -FLT_MAX)
+	{
+ 		sizeY 	= m_image.rows;
+		sY	= 0;
+	}
+
+	return 0; //TODO
+} 
+
+class patternDim{
+public:
+	unsigned int s;
+	unsigned int size;
+	float fit;
+	bool operator()(patternDim a, patternDim b)
+	{
+		return a.fit < b.fit;
+	}
+};
+
+
+double AutoCorr::getMinimalPattern(unsigned int &sX, unsigned int &sY, unsigned int &sizeX, unsigned int &sizeY, const int minimalPatternSize = 10)
+{
+	const float epsilon = 0.00005;
+
+	float *rho_x = 0;
+	float *rho_y = 0;	
+	getACX(m_autocorr, rho_x);
+	getACY(m_autocorr, rho_y);
+	float stdDevX = 0;
+	float stdDevY = 0;
+	int* xPeaks = new int[m_autocorr.cols];
+	int* yPeaks = new int[m_autocorr.rows];
+	int peaksX = countPeaks(rho_x, stdDevX, m_autocorr.cols, xPeaks);
+	int peaksY = countPeaks(rho_y, stdDevY, m_autocorr.rows, yPeaks);
+//	std::cout<<"Peaks x:"<<peaksX<<"\t\t StdDev rho_x: "<<stdDevX/(m_autocorr.cols / peaksX)<<std::endl;
+//	std::cout<<"Peaks y:"<<peaksY<<"\t\t StdDev rho_y: "<<stdDevY/(m_autocorr.rows / peaksY)<<std::endl;
+	for (int i = 0; i < m_autocorr.cols; i++)
+	{
+		std::cerr<<i<<" "<<rho_x[i]<<std::endl;
+	}
+//	for (int i = 0; i < peaksX; i++)
+//	{
+//		std::cout<<xPeaks[i]<<" "<<0<<std::endl;
+//	}
+
+	std::vector<int> high_xPeaks;
+	for (int i = 0; i < peaksX; i++)
+	{
+		if (calcPeakHeight(xPeaks[i], rho_x, m_autocorr.cols) > minimalPatternSize && rho_x[xPeaks[i]] > 0)
+		{
+			high_xPeaks.push_back(xPeaks[i]);
+			std::cout<<high_xPeaks.back()<<" "<<0<<std::endl;
+		}
+	}
+	std::vector<int> high_yPeaks;
+	for (int i = 0; i < peaksY; i++)
+	{
+		if (calcPeakHeight(yPeaks[i], rho_y, m_autocorr.rows) > minimalPatternSize && rho_y[yPeaks[i]] > 0)
+		{
+			high_yPeaks.push_back(yPeaks[i]);
+		}
+	}
+
+	std::priority_queue<patternDim, std::vector<patternDim>, patternDim> x_patterns;
+	//x direction
+	for (int x = 0; x < high_xPeaks.size() / 2; x++)
+	{
+		for (int x2 = x + 1; x2 < high_xPeaks.size() / 2; x2++)
+		{
+			patternDim p;	
+			float dist = fabs(calcPeakHeight(high_xPeaks[x], rho_x, m_autocorr.cols) - calcPeakHeight(high_xPeaks[x2], rho_x, m_autocorr.cols));
+			float d1   = fabs(fabs(rho_x[high_xPeaks[x]] - rho_x[high_xPeaks[x] - 1]) - fabs(rho_x[high_xPeaks[x2]] - rho_x[high_xPeaks[x2] - 1]));
+			float d2   = fabs(fabs(rho_x[high_xPeaks[x]] - rho_x[high_xPeaks[x] + 1]) - fabs(rho_x[high_xPeaks[x2]] - rho_x[high_xPeaks[x2] + 1]));
+			p.size 	= high_xPeaks[x2] - high_xPeaks[x];
+			p.s	= high_xPeaks[x];
+			p.fit = dist + d1 + d2;
+			x_patterns.push(p);
+		}
+	}
+	
+	if (x_patterns.empty())
+	{
+		sizeX = m_image.cols;
+		sX = 0;
+	}
+	else
+	{
+		//TODO
+		//Test the first elements of the priority queuer by cross correlation
+	}
+
+	//y direction
+	std::priority_queue<patternDim, std::vector<patternDim>, patternDim> y_patterns;
+	for (int y = 0; y < high_yPeaks.size() / 2; y++)
+	{
+		for (int y2 = y + 1; y2 < high_yPeaks.size() / 2; y2++)
+		{
+			patternDim p;	
+			float dist = fabs(calcPeakHeight(high_yPeaks[y], rho_y, m_autocorr.rows) - calcPeakHeight(high_yPeaks[y2], rho_y, m_autocorr.rows));
+			float d1   = fabs(fabs(rho_y[high_yPeaks[y]] - rho_y[high_yPeaks[y] - 1]) - fabs(rho_y[high_yPeaks[y2]] - rho_y[high_yPeaks[y2] - 1]));
+			float d2   = fabs(fabs(rho_y[high_yPeaks[y]] - rho_y[high_yPeaks[y] + 1]) - fabs(rho_y[high_yPeaks[y2]] - rho_y[high_yPeaks[y2] + 1]));
+			p.size 	= high_yPeaks[y2] - high_yPeaks[y];
+			p.s	= high_yPeaks[y];
+			p.fit = dist + d1 + d2;
+			y_patterns.push(p);
+		}
+	}
+
+	//Could not find more than one peak
+	if (y_patterns.empty())
+	{
+		sizeY = m_image.rows;
+		sY = 0;
+	}
+	else
+	{
+		//TODO
+		//Test the first elements of the priority queuer by cross correlation
 	}
 
 	return 0; //TODO

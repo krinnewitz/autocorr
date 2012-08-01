@@ -34,6 +34,7 @@
 #include <cstdio>
 #include "Texture.hpp"
 #include "../crosscorr/CrossCorr.hpp"
+#include <queue>
 
 namespace lssr {
 
@@ -78,6 +79,8 @@ public:
 	 *		extracting a pattern from the given image
 	 */
 	double getMinimalPattern(unsigned int &sX, unsigned int &sY, unsigned int &sizeX, unsigned int &sizeY, const int minimalPatternSize);
+	
+	double getMinimalPatternCC(unsigned int &sX, unsigned int &sY, unsigned int &sizeX, unsigned int &sizeY, const int minimalPatternSize);
 
 	/**
 	 * Destructor.
@@ -143,6 +146,17 @@ private:
 	 */
 	int countPeaks(const float* data, float &stdDev, int len, int peaks[]);
 
+	/**
+	 * \brief Calculates the "relative" height of a peak in the given data
+	 *
+	 * \param	peak	The position of the peak
+	 * \param	data	The data
+	 * \param	len	The length of the data
+ 	 *
+	 * \return The "relative" height of the given peak in the data
+	 */
+	float calcPeakHeight(int peak, float* data, int len);
+	
 	cv::Mat m_autocorr;
 	cv::Mat m_image;
 };
