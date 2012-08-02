@@ -245,18 +245,30 @@ double AutoCorr::getMinimalPatternCC(unsigned int &sX, unsigned int &sY, unsigne
 //	}
 
 	std::vector<int> high_xPeaks;
+	float meanPeakHeight = 0;
 	for (int i = 0; i < peaksX; i++)
 	{
-		if (calcPeakHeight(xPeaks[i], rho_x, m_autocorr.cols) > minimalPatternSize && rho_x[xPeaks[i]] > 0)
+		meanPeakHeight += calcPeakHeight(xPeaks[i], rho_x, m_autocorr.cols);
+	}
+	meanPeakHeight /= peaksX;
+	for (int i = 0; i < peaksX; i++)
+	{
+		if (calcPeakHeight(xPeaks[i], rho_x, m_autocorr.cols) > meanPeakHeight)// minimalPatternSize && rho_x[xPeaks[i]] > 0)
 		{
 			high_xPeaks.push_back(xPeaks[i]);
-			std::cout<<high_xPeaks.back()<<" "<<0<<std::endl;
+	//		std::cout<<high_xPeaks.back()<<" "<<0<<std::endl;
 		}
 	}
 	std::vector<int> high_yPeaks;
+	meanPeakHeight = 0;
 	for (int i = 0; i < peaksY; i++)
 	{
-		if (calcPeakHeight(yPeaks[i], rho_y, m_autocorr.rows) > minimalPatternSize && rho_y[yPeaks[i]] > 0)
+		meanPeakHeight += calcPeakHeight(yPeaks[i], rho_y, m_autocorr.rows);
+	}
+	meanPeakHeight /= peaksY;
+	for (int i = 0; i < peaksY; i++)
+	{
+		if (calcPeakHeight(yPeaks[i], rho_y, m_autocorr.rows) > meanPeakHeight)//minimalPatternSize && rho_y[yPeaks[i]] > 0)
 		{
 			high_yPeaks.push_back(yPeaks[i]);
 		}
@@ -266,7 +278,7 @@ double AutoCorr::getMinimalPatternCC(unsigned int &sX, unsigned int &sY, unsigne
 	float x_highest_correlation = -FLT_MAX;
 	for (int x = 0; x < high_xPeaks.size() / 2; x++)
 	{
-		for (int x2 = x + 1; x2 < high_xPeaks.size() / 2; x2++)
+		for (int x2 = x + 1; x2 < high_xPeaks.size(); x2++)
 		{
 			//choose size for subrect
 			int width  = high_xPeaks[x2] - high_xPeaks[x];
@@ -285,9 +297,9 @@ double AutoCorr::getMinimalPatternCC(unsigned int &sX, unsigned int &sY, unsigne
 			float correlation = 0;	
 			for (int i = 0; i < m_image.cols / width; i++)
 			{
-				correlation += cc->at((high_xPeaks[x] + i * width) % m_image.cols, 0);
+				correlation += fabs(cc->at((high_xPeaks[x] + i * width) % m_image.cols, 0));
 			}	
-
+			std::cout<<high_xPeaks[x]<<" "<<high_xPeaks[x2]<<" "<<correlation<<std::endl;
 			if (correlation > x_highest_correlation)
 			{
 				x_highest_correlation = correlation;
@@ -305,16 +317,16 @@ double AutoCorr::getMinimalPatternCC(unsigned int &sX, unsigned int &sY, unsigne
 
 	//y direction
 	float y_highest_correlation = -FLT_MAX;
-	for (int y = 0; y < high_yPeaks.size() / 2; y++)
+	for (int y = 0; y < high_yPeaks.size(); y++)
 	{
 		for (int y2 = y + 1; y2 < high_yPeaks.size() / 2; y2++)
 		{
 			//choose size for subrect
-			int width = m_image.cols;
+			int width = sizeX;
 			int height  = high_yPeaks[y2] - high_yPeaks[y];
 
 			//choose center for the subrect
-			int cx = width / 2;
+			int cx = sX;
 			int cy = high_yPeaks[y] + width / 2;
 
 			//extract the subrect
@@ -326,8 +338,12 @@ double AutoCorr::getMinimalPatternCC(unsigned int &sX, unsigned int &sY, unsigne
 			float correlation = 0;	
 			for (int i = 0; i < m_image.rows / height; i++)
 			{
-				correlation += cc->at(0, (high_yPeaks[y] + i * height) % m_image.rows);
+				for (int j = 0; j < m_image.cols / width; j++)
+				{
+					correlation += fabs(cc->at((sX + j * width) % m_image.cols, (high_yPeaks[y] + i * height) % m_image.rows));
+				}
 			}	
+			std::cout<<std::endl<<high_yPeaks[y]<<" "<<high_yPeaks[y2]<<" "<<correlation<<std::endl;
 			if (correlation > y_highest_correlation)
 			{
 				y_highest_correlation = correlation;
@@ -386,16 +402,16 @@ double AutoCorr::getMinimalPattern(unsigned int &sX, unsigned int &sY, unsigned 
 	std::vector<int> high_xPeaks;
 	for (int i = 0; i < peaksX; i++)
 	{
-		if (calcPeakHeight(xPeaks[i], rho_x, m_autocorr.cols) > minimalPatternSize && rho_x[xPeaks[i]] > 0)
+		if (/*calcPeakHeight(xPeaks[i], rho_x, m_autocorr.cols) > minimalPatternSize &&*/ rho_x[xPeaks[i]] > 0)
 		{
 			high_xPeaks.push_back(xPeaks[i]);
-			std::cout<<high_xPeaks.back()<<" "<<0<<std::endl;
+//			std::cout<<high_xPeaks.back()<<" "<<0<<std::endl;
 		}
 	}
 	std::vector<int> high_yPeaks;
 	for (int i = 0; i < peaksY; i++)
 	{
-		if (calcPeakHeight(yPeaks[i], rho_y, m_autocorr.rows) > minimalPatternSize && rho_y[yPeaks[i]] > 0)
+		if (/*calcPeakHeight(yPeaks[i], rho_y, m_autocorr.rows) > minimalPatternSize &&*/ rho_y[yPeaks[i]] > 0)
 		{
 			high_yPeaks.push_back(yPeaks[i]);
 		}
@@ -425,8 +441,38 @@ double AutoCorr::getMinimalPattern(unsigned int &sX, unsigned int &sY, unsigned 
 	}
 	else
 	{
-		//TODO
 		//Test the first elements of the priority queuer by cross correlation
+		float x_highest_correlation = -FLT_MAX;
+		for (int x = 0; x < std::min((size_t)10, x_patterns.size()); x++)
+		{
+			//choose size for subrect
+			int width  = x_patterns.top().size;
+			int height = m_image.rows;
+
+			//choose center for the subrect
+			int cx = x_patterns.top().s + width / 2;
+			int cy = height / 2;
+
+			//extract the subrect
+			cv::Mat dst;
+			cv::getRectSubPix(m_image, cv::Size(width, height), cv::Point2f(cx, cy), dst);
+		
+			//calculate cross correlation between dst and m_image
+			CrossCorr* cc = new CrossCorr(m_image, dst);
+			float correlation = 0;	
+			for (int i = 0; i < m_image.cols / width; i++)
+			{
+				correlation += cc->at((x_patterns.top().s + i * width) % m_image.cols, 0);
+			}	
+//			std::cout<<"x: "<<x<<" "<<correlation<<std::endl;
+			if (correlation > x_highest_correlation)
+			{
+				x_highest_correlation = correlation;
+				sizeX 	= width;
+				sX	= x_patterns.top().s;
+			}
+			x_patterns.pop();
+		}
 	}
 
 	//y direction
@@ -454,8 +500,38 @@ double AutoCorr::getMinimalPattern(unsigned int &sX, unsigned int &sY, unsigned 
 	}
 	else
 	{
-		//TODO
 		//Test the first elements of the priority queuer by cross correlation
+		float y_highest_correlation = -FLT_MAX;
+		for (int y = 0; y < std::min((size_t)10, y_patterns.size()); y++)
+		{
+			//choose size for subrect
+			int width = m_image.cols;
+			int height  = y_patterns.top().size;
+
+			//choose center for the subrect
+			int cx = width / 2;
+			int cy = y_patterns.top().s + width / 2;
+
+			//extract the subrect
+			cv::Mat dst;
+			cv::getRectSubPix(m_image, cv::Size(width, height), cv::Point2f(cx, cy), dst);
+		
+			//calculate cross correlation between dst and m_image
+			CrossCorr* cc = new CrossCorr(m_image, dst);
+			float correlation = 0;	
+			for (int i = 0; i < m_image.rows / height; i++)
+			{
+				correlation += cc->at(0, (y_patterns.top().s + i * height) % m_image.rows);
+			}	
+//			std::cout<<"y: "<<y<<" "<<correlation<<std::endl;
+			if (correlation > y_highest_correlation)
+			{
+				y_highest_correlation = correlation;
+				sizeY 	= height;
+				sY	= y_patterns.top().s;
+			}
+			y_patterns.pop();
+		}
 	}
 
 	return 0; //TODO
