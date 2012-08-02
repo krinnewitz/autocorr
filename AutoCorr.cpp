@@ -237,7 +237,7 @@ double AutoCorr::getMinimalPatternCC(unsigned int &sX, unsigned int &sY, unsigne
 //	std::cout<<"Peaks y:"<<peaksY<<"\t\t StdDev rho_y: "<<stdDevY/(m_autocorr.rows / peaksY)<<std::endl;
 	for (int i = 0; i < m_autocorr.cols; i++)
 	{
-		std::cerr<<i<<" "<<rho_x[i]<<std::endl;
+//		std::cerr<<i<<" "<<rho_x[i]<<std::endl;
 	}
 //	for (int i = 0; i < peaksX; i++)
 //	{
@@ -299,7 +299,7 @@ double AutoCorr::getMinimalPatternCC(unsigned int &sX, unsigned int &sY, unsigne
 			{
 				correlation += fabs(cc->at((high_xPeaks[x] + i * width) % m_image.cols, 0));
 			}	
-			std::cout<<high_xPeaks[x]<<" "<<high_xPeaks[x2]<<" "<<correlation<<std::endl;
+//			std::cout<<high_xPeaks[x]<<" "<<high_xPeaks[x2]<<" "<<correlation<<std::endl;
 			if (correlation > x_highest_correlation)
 			{
 				x_highest_correlation = correlation;
@@ -343,7 +343,7 @@ double AutoCorr::getMinimalPatternCC(unsigned int &sX, unsigned int &sY, unsigne
 					correlation += fabs(cc->at((sX + j * width) % m_image.cols, (high_yPeaks[y] + i * height) % m_image.rows));
 				}
 			}	
-			std::cout<<std::endl<<high_yPeaks[y]<<" "<<high_yPeaks[y2]<<" "<<correlation<<std::endl;
+	//		std::cout<<std::endl<<high_yPeaks[y]<<" "<<high_yPeaks[y2]<<" "<<correlation<<std::endl;
 			if (correlation > y_highest_correlation)
 			{
 				y_highest_correlation = correlation;
@@ -358,8 +358,16 @@ double AutoCorr::getMinimalPatternCC(unsigned int &sX, unsigned int &sY, unsigne
  		sizeY 	= m_image.rows;
 		sY	= 0;
 	}
-
-	return 0; //TODO
+	
+	if (y_highest_correlation == -FLT_MAX == x_highest_correlation)
+	{
+		//Texture is aperiodic
+		return 0;
+	}
+	else
+	{
+		return	1.0f / (stdDevX/(m_autocorr.cols / peaksX) + stdDevY/(m_autocorr.rows / peaksY));
+	}
 } 
 
 class patternDim{
